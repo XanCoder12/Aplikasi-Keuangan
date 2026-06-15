@@ -67,6 +67,12 @@ func main() {
 			protected.DELETE("/savings-goals/:id", handler.DeleteSavingsGoal)
 			protected.POST("/savings-goals/:id/deposit", handler.DepositToSavingsGoal)
 			protected.POST("/savings-goals/:id/withdraw", handler.WithdrawFromSavingsGoal)
+
+			// Budgets
+			protected.GET("/budgets", handler.GetBudgets)
+			protected.GET("/budgets/summary", handler.GetBudgetSummary)
+			protected.POST("/budgets", handler.UpsertBudget)
+			protected.DELETE("/budgets/:id", handler.DeleteBudget)
 		}
 	}
 

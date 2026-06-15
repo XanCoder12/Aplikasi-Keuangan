@@ -109,6 +109,23 @@ func Migrate() error {
 		CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id);
 	`)
 
+	// Step 6: Create budgets table
+	Pool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS budgets (
+			id SERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+			month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+			year INTEGER NOT NULL,
+			amount BIGINT NOT NULL DEFAULT 0,
+			created_at TIMESTAMP DEFAULT NOW(),
+			updated_at TIMESTAMP DEFAULT NOW(),
+			UNIQUE(user_id, category_id, month, year)
+		);
+		CREATE INDEX IF NOT EXISTS idx_budgets_user ON budgets(user_id);
+		CREATE INDEX IF NOT EXISTS idx_budgets_month_year ON budgets(month, year);
+	`)
+
 	return nil
 }
 
