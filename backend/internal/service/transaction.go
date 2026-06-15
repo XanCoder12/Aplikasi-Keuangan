@@ -34,3 +34,11 @@ func DeleteTransaction(id, userID int) error {
 func GetSummary(userID, month, year int) (*model.SummaryResponse, error) {
 	return repository.GetSummary(userID, month, year)
 }
+
+func GetYearlyTrend(userID, year int) (*model.YearlyTrendResponse, error) {
+	return repository.GetYearlyTrend(userID, year)
+}
+
+func GetCategoryTrend(userID, month, year int) (*model.CategoryTrendResponse, error) {
+	return repository.GetCategoryTrend(userID, month, year)
+}

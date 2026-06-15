@@ -103,11 +103,15 @@ func Migrate() error {
 			current_amount BIGINT NOT NULL DEFAULT 0,
 			deadline DATE,
 			color VARCHAR(7) NOT NULL DEFAULT '#3b82f6',
+			image_url TEXT NOT NULL DEFAULT '',
 			created_at TIMESTAMP DEFAULT NOW(),
 			updated_at TIMESTAMP DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id);
 	`)
+
+	// Step 5b: Add image_url column for existing databases
+	Pool.Exec(context.Background(), `ALTER TABLE savings_goals ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT ''`)
 
 	// Step 6: Create budgets table
 	Pool.Exec(context.Background(), `

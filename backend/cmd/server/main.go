@@ -58,6 +58,8 @@ func main() {
 			protected.DELETE("/transactions/:id", handler.DeleteTransaction)
 
 			protected.GET("/reports/summary", handler.GetSummary)
+			protected.GET("/reports/yearly-trend", handler.GetYearlyTrend)
+			protected.GET("/reports/category-trend", handler.GetCategoryTrend)
 
 			// Savings goals
 			protected.GET("/savings-goals", handler.GetSavingsGoals)

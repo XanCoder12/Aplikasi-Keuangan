@@ -136,3 +136,45 @@ func GetSummary(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, summary)
 }
+
+func GetYearlyTrend(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	year := time.Now().Year()
+	if y := c.Query("year"); y != "" {
+		if val, err := strconv.Atoi(y); err == nil && val > 2000 {
+			year = val
+		}
+	}
+
+	trend, err := service.GetYearlyTrend(userID, year)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, trend)
+}
+
+func GetCategoryTrend(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	now := time.Now()
+	month := int(now.Month())
+	year := now.Year()
+
+	if m := c.Query("month"); m != "" {
+		if val, err := strconv.Atoi(m); err == nil && val >= 1 && val <= 12 {
+			month = val
+		}
+	}
+	if y := c.Query("year"); y != "" {
+		if val, err := strconv.Atoi(y); err == nil && val > 0 {
+			year = val
+		}
+	}
+
+	trend, err := service.GetCategoryTrend(userID, month, year)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, trend)
+}
