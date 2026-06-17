@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,18 +12,47 @@ import (
 var Pool *pgxpool.Pool
 
 func Connect() error {
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "finance")
-	password := getEnv("DB_PASSWORD", "finance123")
-	dbname := getEnv("DB_NAME", "finance")
-	sslmode := getEnv("DB_SSLMODE", "disable")
+	var dsn string
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		user, password, host, port, dbname, sslmode)
+	// Prefer DATABASE_URL (e.g. from Railway / Supabase)
+	if envURL := os.Getenv("DATABASE_URL"); envURL != "" {
+		dsn = envURL
+	} else {
+		host := getEnv("DB_HOST", "localhost")
+		port := getEnv("DB_PORT", "5432")
+		user := getEnv("DB_USER", "finance")
+		password := getEnv("DB_PASSWORD", "finance123")
+		dbname := getEnv("DB_NAME", "finance")
+		sslmode := getEnv("DB_SSLMODE", "disable")
 
-	var err error
-	Pool, err = pgxpool.New(context.Background(), dsn)
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+			user, password, host, port, dbname, sslmode)
+	}
+
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return fmt.Errorf("unable to parse config: %w", err)
+	}
+
+	// Paksa IPv4, skip IPv6
+	config.ConnConfig.Config.LookupFunc = func(ctx context.Context, host string) ([]string, error) {
+		addrs, err := net.DefaultResolver.LookupHost(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		var ipv4 []string
+		for _, addr := range addrs {
+			if net.ParseIP(addr).To4() != nil {
+				ipv4 = append(ipv4, addr)
+			}
+		}
+		if len(ipv4) == 0 {
+			return addrs, nil // fallback kalau tidak ada IPv4
+		}
+		return ipv4, nil
+	}
+
+	Pool, err = pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return fmt.Errorf("unable to connect to database: %w", err)
 	}
@@ -33,7 +63,6 @@ func Connect() error {
 
 	return nil
 }
-
 func Migrate() error {
 	// Step 1: Create users table first
 	_, err := Pool.Exec(context.Background(), `
