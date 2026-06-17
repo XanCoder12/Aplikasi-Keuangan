@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, BarChart3, LogOut, UserCircle, Target, Sparkles,
-  Moon, Sun, Menu, X,
+  Moon, Sun, Menu, X, BookOpen,
 } from 'lucide-react';
 
 const navItems = [
@@ -14,12 +14,13 @@ const navItems = [
   { to: '/savings', label: 'Tabungan', icon: Target },
   { to: '/insights', label: 'Insight', icon: Sparkles },
   { to: '/reports', label: 'Laporan', icon: BarChart3 },
+  { to: '/docs', label: 'Dokumentasi', icon: BookOpen },
 ];
 
-// Items shown in bottom nav (first 5)
-const bottomNavItems = navItems.slice(0, 5);
-// Extra items shown in hamburger menu
-const extraNavItems = navItems.slice(5);
+// Items shown in bottom nav (first 4)
+const bottomNavItems = navItems.slice(0, 4);
+// Extra items shown in hamburger menu (Insight, Laporan)
+const extraNavItems = navItems.slice(4);
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -35,6 +36,7 @@ export default function Layout({ children }) {
     '/savings': 'Tabungan',
     '/insights': 'Insight',
     '/reports': 'Laporan',
+    '/docs': 'Dokumentasi',
   };
 
   const currentTitle = pageTitles[location.pathname] || 'Catatan Keuangan';
@@ -149,7 +151,7 @@ export default function Layout({ children }) {
       </header>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 safe-area-pb transition-colors">
-        <div className="grid grid-cols-6 h-16 relative">
+        <div className="grid grid-cols-5 h-16 relative">
           {bottomNavItems.map((item) => {
             const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
             return (
