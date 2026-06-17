@@ -98,6 +98,12 @@ export default function Transactions() {
 
   const formatCurrency = (val) => new Intl.NumberFormat('id-ID').format(val || 0);
 
+  const formatCompactMobile = (val) => {
+    if (Math.abs(val) >= 1000000) return `${(val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1)}jt`;
+    if (Math.abs(val) >= 1000) return `${(val / 1000).toFixed(0)}rb`;
+    return new Intl.NumberFormat('id-ID').format(val);
+  };
+
   const categoryById = {};
   categories.forEach((c) => { categoryById[c.id] = c; });
 
@@ -112,7 +118,7 @@ export default function Transactions() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Transaksi</h1>
@@ -249,9 +255,9 @@ export default function Transactions() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                  <div className="text-right shrink-0 min-w-0">
+                    <p className={`text-sm font-bold truncate ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {t.type === 'income' ? '+' : '-'}<span className="sm:hidden">{formatCompactMobile(t.amount)}</span><span className="hidden sm:inline">{formatCurrency(t.amount)}</span>
                     </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}

@@ -126,7 +126,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors overflow-x-hidden">
       <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 fixed top-0 bottom-0 left-0 z-30 transition-colors">
         <SidebarContent onItemClick={() => {}} />
       </aside>
@@ -215,9 +215,9 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
-      <main className="flex-1 md:ml-64">
+      <main className="flex-1 md:ml-64 overflow-x-hidden">
         <div className="pt-14 pb-20 md:pt-0 md:pb-0">
-          <div className="max-w-7xl mx-auto px-3 py-4 md:px-8 md:py-8">{children}</div>
+          <div className="max-w-7xl mx-auto px-3 py-4 md:px-8 md:py-8 overflow-x-hidden">{children}</div>
         </div>
       </main>
     </div>
