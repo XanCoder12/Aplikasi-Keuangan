@@ -1,7 +1,38 @@
 import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, ComposedChart, Line, Area
+} from 'recharts';
 import Card from '../components/Card';
-import { getSummary } from '../api/client';
+import { getSummary, getYearlyTrend } from '../api/client';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function formatRupiah(n) {
+  return new Intl.NumberFormat('id-ID').format(n || 0);
+}
+
+function formatCompact(n) {
+  if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1)}jt`;
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}rb`;
+  return new Intl.NumberFormat('id-ID').format(n);
+}
+
+function CashFlowTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-100 p-3 text-sm">
+      <p className="font-semibold text-gray-700 mb-1.5">{label}</p>
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2 py-0.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="text-gray-500">{entry.name}:</span>
+          <span className="font-semibold text-gray-800">Rp {formatRupiah(entry.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Reports() {
   const now = new Date();
@@ -10,18 +41,16 @@ export default function Reports() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [yearlyTrend, setYearlyTrend] = useState(null);
+
   useEffect(() => {
     setLoading(true);
-    getSummary(month, year).then(setSummary).finally(() => setLoading(false));
+    Promise.all([getSummary(month, year), getYearlyTrend(year)])
+      .then(([s, yt]) => { setSummary(s); setYearlyTrend(yt); })
+      .finally(() => setLoading(false));
   }, [month, year]);
 
-  const formatCurrency = (val) => new Intl.NumberFormat('id-ID').format(val || 0);
-
-  const formatCompact = (val) => {
-    if (val >= 1000000) return `${(val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1)}jt`;
-    if (val >= 1000) return `${(val / 1000).toFixed(0)}rb`;
-    return new Intl.NumberFormat('id-ID').format(val);
-  };
+  const formatCurrency = formatRupiah;
 
   const barData = summary?.by_category
     ?.filter((c) => c.total > 0)
@@ -96,6 +125,66 @@ export default function Reports() {
           </p>
         </Card>
       </div>
+
+      {/* Cash Flow Chart */}
+      <Card>
+        <h2 className="text-sm sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Cash Flow {year}</h2>
+        {(() => {
+          let cumulative = 0;
+          const cfData = yearlyTrend?.months?.map((m) => {
+            cumulative += (m.income - m.expense);
+            return { name: MONTH_NAMES[m.month - 1], Pemasukan: m.income, Pengeluaran: m.expense, 'Cash Flow': cumulative };
+          }) || [];
+          if (!cfData.some(d => d.Pemasukan > 0 || d.Pengeluaran > 0)) {
+            return <p className="text-gray-400 text-center py-8 sm:py-12 text-sm">Tidak ada data cash flow</p>;
+          }
+          return (
+            <>
+              <div className="flex items-center gap-3 text-xs mb-3">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-400" /> Masuk</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400" /> Keluar</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-indigo-500" /> Akumulasi</span>
+              </div>
+              <ResponsiveContainer width="100%" height={220} className="sm:hidden">
+                <ComposedChart data={cfData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCompact} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CashFlowTooltip />} />
+                  <Bar dataKey="Pemasukan" fill="#10b981" radius={[4, 4, 0, 0]} barSize={14} />
+                  <Bar dataKey="Pengeluaran" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={14} />
+                  <Area type="monotone" dataKey="Cash Flow" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.15} dot={{ r: 2.5, fill: '#6366f1', strokeWidth: 0 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={300} className="hidden sm:block">
+                <ComposedChart data={cfData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <defs>
+                    <linearGradient id="rpIncomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="rpExpenseGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="rpCashFlowGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCompact} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CashFlowTooltip />} />
+                  <Bar dataKey="Pemasukan" fill="url(#rpIncomeGrad)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="Pengeluaran" fill="url(#rpExpenseGrad)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Area type="monotone" dataKey="Cash Flow" stroke="#6366f1" strokeWidth={2.5} fill="url(#rpCashFlowGrad)" dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </>
+          );
+        })()}
+      </Card>
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 sm:gap-6">

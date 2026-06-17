@@ -1,7 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
-import { Target, Plus, Edit2, Trash2, PiggyBank, TrendingUp, Calendar, ArrowUpCircle, ArrowDownCircle, ImagePlus, X } from 'lucide-react';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area
+} from 'recharts';
+import { Target, Plus, Edit2, Trash2, PiggyBank, TrendingUp, Calendar, ArrowUpCircle, ArrowDownCircle, ImagePlus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '../components/Modal';
-import { getSavingsGoals, createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, depositToSavingsGoal, withdrawFromSavingsGoal } from '../api/client';
+import { getSavingsGoals, createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, depositToSavingsGoal, withdrawFromSavingsGoal, getYearlyTrend } from '../api/client';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function CashFlowTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-100 p-3 text-sm">
+      <p className="font-semibold text-gray-700 mb-1.5">{label}</p>
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2 py-0.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="text-gray-500">{entry.name}:</span>
+          <span className="font-semibold text-gray-800">Rp {formatCompact(entry.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -59,7 +81,25 @@ export default function SavingsGoals() {
   const [fundError, setFundError] = useState('');
   const fileInputRef = useRef(null);
 
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [yearlyTrend, setYearlyTrend] = useState(null);
+
   useEffect(() => { loadGoals(); }, []);
+  useEffect(() => {
+    getYearlyTrend(year).then(setYearlyTrend).catch(() => {});
+  }, [year]);
+
+  // Cash flow chart data
+  let cumulative = 0;
+  const cashFlowData = yearlyTrend?.months?.map((m) => {
+    cumulative += (m.income - m.expense);
+    return {
+      name: MONTH_NAMES[m.month - 1],
+      Pemasukan: m.income,
+      Pengeluaran: m.expense,
+      'Cash Flow': cumulative,
+    };
+  }) || [];
 
   async function loadGoals() {
     try { const data = await getSavingsGoals(); setGoals(data); }
@@ -194,6 +234,54 @@ export default function SavingsGoals() {
           </div>
         </div>
       )}
+
+      {/* Cash Flow Chart */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm sm:text-lg font-semibold text-gray-800">Cash Flow {year}</h2>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 text-xs mr-2">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-400" /> Masuk</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400" /> Keluar</span>
+              <span className="flex items-center gap-1.5 hidden sm:flex"><span className="w-3 h-1.5 rounded-full bg-indigo-500" /> Akumulasi</span>
+            </div>
+            <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden">
+              <button onClick={() => setYear(year - 1)} className="px-2 py-1.5 hover:bg-gray-200 text-gray-400 transition-colors"><ChevronLeft size={14} /></button>
+              <span className="px-2 text-xs font-semibold text-gray-600">{year}</span>
+              <button onClick={() => setYear(year + 1)} className="px-2 py-1.5 hover:bg-gray-200 text-gray-400 transition-colors"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+        </div>
+        {cashFlowData.some(d => d.Pemasukan > 0 || d.Pengeluaran > 0) ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={cashFlowData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+              <defs>
+                <linearGradient id="sgIncomeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="sgExpenseGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="sgCashFlowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCompact} tickLine={false} axisLine={false} />
+              <Tooltip content={<CashFlowTooltip />} />
+              <Bar dataKey="Pemasukan" fill="url(#sgIncomeGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+              <Bar dataKey="Pengeluaran" fill="url(#sgExpenseGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+              <Area type="monotone" dataKey="Cash Flow" stroke="#6366f1" strokeWidth={2} fill="url(#sgCashFlowGrad)" dot={{ r: 2.5, fill: '#6366f1', strokeWidth: 0 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[220px] text-gray-400 text-sm">Belum ada data transaksi tahun {year}</div>
+        )}
+      </div>
 
       {/* Goal Cards */}
       {goals.length === 0 ? (
