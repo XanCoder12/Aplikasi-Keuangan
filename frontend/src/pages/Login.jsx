@@ -153,7 +153,6 @@ export default function Login() {
                     theme="outline"
                     size="large"
                     shape="pill"
-                    width="100%"
                     text="signin_with"
                   />
                 </div>
