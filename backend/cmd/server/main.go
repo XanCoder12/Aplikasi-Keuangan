@@ -48,6 +48,7 @@ func main() {
 		// Public auth routes
 		api.POST("/auth/register", handler.Register)
 		api.POST("/auth/login", handler.Login)
+		api.POST("/auth/google", handler.GoogleLogin)
 
 		// Protected routes (require auth)
 		protected := api.Group("")

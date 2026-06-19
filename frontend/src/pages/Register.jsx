@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
-import { authRegister } from '../api/client';
+import { authRegister, authGoogle } from '../api/client';
 import { Wallet, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+
+const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function Register() {
   const { register } = useAuth();
@@ -167,6 +170,38 @@ export default function Register() {
                 {loading ? 'Mendaftar...' : 'Daftar Sekarang'}
               </button>
             </form>
+
+            {GOOGLE_ENABLED && (
+              <>
+                <div className="flex items-center gap-3 my-5">
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">atau</span>
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                </div>
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      setError('');
+                      setLoading(true);
+                      try {
+                        const res = await authGoogle(credentialResponse.credential);
+                        register(res);
+                      } catch (err) {
+                        setError(err?.response?.data?.error || 'Daftar dengan Google gagal');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    onError={() => setError('Daftar dengan Google gagal')}
+                    theme="outline"
+                    size="large"
+                    shape="pill"
+                    width="100%"
+                    text="signup_with"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">

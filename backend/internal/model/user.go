@@ -6,6 +6,7 @@ type User struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
+	GoogleID  *string   `json:"google_id,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -23,4 +24,8 @@ type LoginRequest struct {
 type AuthResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+}
+
+type GoogleLoginRequest struct {
+	Credential string `json:"credential" binding:"required"`
 }

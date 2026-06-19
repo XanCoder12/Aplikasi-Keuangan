@@ -35,6 +35,9 @@ export const authRegister = (data) =>
 export const authLogin = (data) =>
   api.post('/auth/login', data).then((r) => r.data);
 
+export const authGoogle = (credential) =>
+  api.post('/auth/google', { credential }).then((r) => r.data);
+
 // Categories
 export const getCategories = (type) =>
   api.get('/categories', { params: { type } }).then((r) => r.data);

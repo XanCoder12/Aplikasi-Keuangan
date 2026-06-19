@@ -184,6 +184,16 @@ func Migrate() error {
 		return fmt.Errorf("migrate recurring_transactions: %w", err)
 	}
 
+	// Step 8: Add google_id column to users and make password_hash nullable (Google OAuth)
+	_, err = Pool.Exec(context.Background(), `
+		ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
+		ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
+	`)
+	if err != nil {
+		return fmt.Errorf("migrate google_id on users: %w", err)
+	}
+
 	return nil
 }
 
