@@ -3,47 +3,10 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell,
   BarChart, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ScatterChart, Scatter, ZAxis
 } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet, Calendar, ChevronLeft, ChevronRight, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Sparkles, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
 import { getYearlyTrend, getCategoryTrend, getSummary } from '../api/client';
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-const MONTH_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-function formatRupiah(n) {
-  return new Intl.NumberFormat('id-ID').format(n || 0);
-}
-
-function formatCompact(n) {
-  if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1)}jt`;
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}rb`;
-  return new Intl.NumberFormat('id-ID').format(n);
-}
-
-// Mini sparkline component
-function MiniSparkline({ data, color }) {
-  return (
-    <ResponsiveContainer width={80} height={32}>
-      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-        <defs>
-          <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area
-          type="monotone"
-          dataKey="expense"
-          stroke={color}
-          strokeWidth={2}
-          fill={`url(#grad-${color.replace('#', '')})`}
-          dot={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
+import { formatRupiah, formatCompact, MONTH_NAMES, MONTH_FULL } from '../utils/format';
 
 // Custom tooltip for the mixed chart
 function CustomTooltip({ active, payload, label }) {
@@ -62,7 +25,7 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
-export default function Insights() {
+export default function InsightCharts() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -121,7 +84,7 @@ export default function Insights() {
   const monthIncome = summary?.total_income || 0;
   const monthExpense = summary?.total_expense || 0;
 
-  // Category data for table with income/expense split
+  // Category data for charts
   const incomeCats = summary?.by_category?.filter(c => c.total > 0 && !c.category_name.includes('Pengeluaran') && !c.category_name.includes('Lainnya (Peng'))
     .filter(c => !['Makanan & Minuman', 'Transportasi', 'Belanja', 'Hiburan', 'Kesehatan', 'Tagihan', 'Pendidikan', 'Tempat Tinggal'].includes(c.category_name))
     .sort((a, b) => b.total - a.total) || [];
@@ -129,12 +92,6 @@ export default function Insights() {
     c.category_name.includes('Pengeluaran') ||
     ['Makanan & Minuman', 'Transportasi', 'Belanja', 'Hiburan', 'Kesehatan', 'Tagihan', 'Pendidikan', 'Tempat Tinggal'].includes(c.category_name)
   )).sort((a, b) => b.total - a.total) || [];
-
-  // Build weekly trend map for sparklines
-  const weeklyMap = {};
-  catTrend?.categories?.forEach(c => {
-    weeklyMap[c.category_id] = c.weekly;
-  });
 
   const totalCatExpense = expenseCats.reduce((s, c) => s + c.total, 0);
   const totalCatIncome = incomeCats.reduce((s, c) => s + c.total, 0);
@@ -154,9 +111,9 @@ export default function Insights() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <Sparkles className="text-amber-500" size={24} />
-            Insight
+            Chart Data
           </h1>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">Analisis keuangan & tren pengeluaran</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">Visualisasi tren keuangan</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -342,7 +299,6 @@ export default function Insights() {
 
       {/* Row 3: Category Horizontal Bar + Radar */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-
         {/* Top Categories Horizontal Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 sm:p-6 shadow-sm transition-colors">
           <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Top Kategori Pengeluaran</h2>
@@ -401,211 +357,76 @@ export default function Insights() {
         </div>
       </div>
 
-      {/* Category Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-colors">
-        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Detail Pengeluaran & Pemasukan - {MONTH_FULL[month - 1]} {year}
-          </h2>
-        </div>
-
-        {/* Income Section */}
-        {incomeCats.length > 0 && (
-          <div className="border-b border-gray-100 dark:border-gray-700">
-            <div className="px-4 sm:px-6 py-3 bg-green-50/50 dark:bg-green-900/20 flex items-center gap-2">
-              <ArrowUpRight size={16} className="text-green-500" />
-              <span className="text-sm font-semibold text-green-700 dark:text-green-400">Pemasukan</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-50 text-gray-400 text-xs">
-                    <th className="text-left px-4 sm:px-6 py-2.5 font-medium">Kategori</th>
-                    <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Transaksi</th>
-                    <th className="text-right px-3 py-2.5 font-medium">Jumlah</th>
-                    <th className="text-right px-3 py-2.5 font-medium hidden sm:table-cell">Persentase</th>
-                    <th className="text-right px-3 sm:px-6 py-2.5 font-medium hidden md:table-cell">Tren Mingguan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {incomeCats.map((c) => {
-                    const pct = totalCatIncome > 0 ? Math.round((c.total / totalCatIncome) * 100) : 0;
-                    const weekly = weeklyMap[c.category_id] || [{ expense: 0 }, { expense: 0 }, { expense: 0 }, { expense: 0 }];
-                    const sparkData = weekly.map(w => ({ expense: w.expense }));
-                    return (
-                      <tr key={c.category_id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 sm:px-6 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
-                            <span className="font-medium text-gray-700">{c.category_name}</span>
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-3 text-gray-400 dark:text-gray-500 hidden sm:table-cell">{c.count}</td>
-                        <td className="text-right px-3 py-3 font-semibold text-green-600 dark:text-green-400">Rp {formatRupiah(c.total)}</td>
-                        <td className="text-right px-3 py-3 hidden sm:table-cell">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-green-400" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-8">{pct}%</span>
-                          </div>
-                        </td>
-                        <td className="text-right px-3 sm:px-6 py-3 hidden md:table-cell">
-                          <MiniSparkline data={sparkData} color={c.category_color} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="bg-green-50/30 dark:bg-green-900/20 font-semibold">
-                    <td className="px-4 sm:px-6 py-3 text-green-700 dark:text-green-400">Total Pemasukan</td>
-                    <td className="text-center px-3 py-3 text-green-600 hidden sm:table-cell">{incomeCats.reduce((s, c) => s + c.count, 0)}</td>
-                    <td className="text-right px-3 py-3 text-green-700">Rp {formatRupiah(totalCatIncome)}</td>
-                    <td className="text-right px-3 py-3 text-green-600 hidden sm:table-cell">100%</td>
-                    <td className="px-3 sm:px-6 py-3 hidden md:table-cell" />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Expense Section */}
+      {/* Row 4: Pie Charts - Income & Expense Distribution */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+        {/* Expense Distribution */}
         {expenseCats.length > 0 && (
-          <div>
-            <div className="px-4 sm:px-6 py-3 bg-red-50/50 dark:bg-red-900/20 flex items-center gap-2">
-              <ArrowDownRight size={16} className="text-red-500" />
-              <span className="text-sm font-semibold text-red-700 dark:text-red-400">Pengeluaran</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-50 dark:border-gray-700 text-gray-400 dark:text-gray-500 text-xs">
-                    <th className="text-left px-4 sm:px-6 py-2.5 font-medium">Kategori</th>
-                    <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Transaksi</th>
-                    <th className="text-right px-3 py-2.5 font-medium">Jumlah</th>
-                    <th className="text-right px-3 py-2.5 font-medium hidden sm:table-cell">Persentase</th>
-                    <th className="text-right px-3 sm:px-6 py-2.5 font-medium hidden md:table-cell">Tren Mingguan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenseCats.map((c) => {
-                    const pct = totalCatExpense > 0 ? Math.round((c.total / totalCatExpense) * 100) : 0;
-                    const weekly = weeklyMap[c.category_id] || [{ expense: 0 }, { expense: 0 }, { expense: 0 }, { expense: 0 }];
-                    const sparkData = weekly.map(w => ({ expense: w.expense }));
-                    return (
-                      <tr key={c.category_id} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td className="px-4 sm:px-6 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
-                            <span className="font-medium text-gray-700 dark:text-gray-200">{c.category_name}</span>
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-3 text-gray-400 dark:text-gray-500 hidden sm:table-cell">{c.count}</td>
-                        <td className="text-right px-3 py-3 font-semibold text-red-600 dark:text-red-400">Rp {formatRupiah(c.total)}</td>
-                        <td className="text-right px-3 py-3 hidden sm:table-cell">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-red-400" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-400 dark:text-gray-500 w-8">{pct}%</span>
-                          </div>
-                        </td>
-                        <td className="text-right px-3 sm:px-6 py-3 hidden md:table-cell">
-                          <MiniSparkline data={sparkData} color={c.category_color} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="bg-red-50/30 dark:bg-red-900/20 font-semibold">
-                    <td className="px-4 sm:px-6 py-3 text-red-700 dark:text-red-400">Total Pengeluaran</td>
-                    <td className="text-center px-3 py-3 text-red-600 hidden sm:table-cell">{expenseCats.reduce((s, c) => s + c.count, 0)}</td>
-                    <td className="text-right px-3 py-3 text-red-700">Rp {formatRupiah(totalCatExpense)}</td>
-                    <td className="text-right px-3 py-3 text-red-600 hidden sm:table-cell">100%</td>
-                    <td className="px-3 sm:px-6 py-3 hidden md:table-cell" />
-                  </tr>
-                </tbody>
-              </table>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 sm:p-6 shadow-sm transition-colors">
+            <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Distribusi Pengeluaran</h2>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <ResponsiveContainer width={180} height={180}>
+                <PieChart>
+                  <Pie
+                    data={expenseCats.map(c => ({ name: c.category_name, value: c.total, color: c.category_color }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {expenseCats.map((c, i) => <Cell key={i} fill={c.category_color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => `Rp ${formatRupiah(v)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 w-full">
+                {expenseCats.slice(0, 8).map(c => (
+                  <div key={c.category_id} className="flex items-center gap-2 text-sm">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
+                    <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{c.category_name}</span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs">{totalCatExpense > 0 ? Math.round((c.total / totalCatExpense) * 100) : 0}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {incomeCats.length === 0 && expenseCats.length === 0 && (
-          <div className="flex items-center justify-center py-16 text-gray-400 dark:text-gray-500 text-sm">
-            Belum ada data transaksi untuk bulan ini
+        {/* Income Distribution */}
+        {incomeCats.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 sm:p-6 shadow-sm transition-colors">
+            <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Distribusi Pemasukan</h2>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <ResponsiveContainer width={180} height={180}>
+                <PieChart>
+                  <Pie
+                    data={incomeCats.map(c => ({ name: c.category_name, value: c.total, color: c.category_color }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {incomeCats.map((c, i) => <Cell key={i} fill={c.category_color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => `Rp ${formatRupiah(v)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 w-full">
+                {incomeCats.slice(0, 8).map(c => (
+                  <div key={c.category_id} className="flex items-center gap-2 text-sm">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
+                    <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{c.category_name}</span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs">{totalCatIncome > 0 ? Math.round((c.total / totalCatIncome) * 100) : 0}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-        {/* Row 4: Pie Charts - Income & Expense Distribution */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-          {/* Expense Distribution */}
-          {expenseCats.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 sm:p-6 shadow-sm transition-colors">
-              <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Distribusi Pengeluaran</h2>
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <ResponsiveContainer width={180} height={180}>
-                  <PieChart>
-                    <Pie
-                      data={expenseCats.map(c => ({ name: c.category_name, value: c.total, color: c.category_color }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {expenseCats.map((c, i) => <Cell key={i} fill={c.category_color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => `Rp ${formatRupiah(v)}`} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 w-full">
-                  {expenseCats.slice(0, 8).map(c => (
-                    <div key={c.category_id} className="flex items-center gap-2 text-sm">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
-                      <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{c.category_name}</span>
-                      <span className="text-gray-400 dark:text-gray-500 text-xs">{totalCatExpense > 0 ? Math.round((c.total / totalCatExpense) * 100) : 0}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Income Distribution */}
-          {incomeCats.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 sm:p-6 shadow-sm transition-colors">
-              <h2 className="text-sm sm:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Distribusi Pemasukan</h2>
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <ResponsiveContainer width={180} height={180}>
-                  <PieChart>
-                    <Pie
-                      data={incomeCats.map(c => ({ name: c.category_name, value: c.total, color: c.category_color }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {incomeCats.map((c, i) => <Cell key={i} fill={c.category_color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => `Rp ${formatRupiah(v)}`} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 w-full">
-                  {incomeCats.slice(0, 8).map(c => (
-                    <div key={c.category_id} className="flex items-center gap-2 text-sm">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.category_color }} />
-                      <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{c.category_name}</span>
-                      <span className="text-gray-400 dark:text-gray-500 text-xs">{totalCatIncome > 0 ? Math.round((c.total / totalCatIncome) * 100) : 0}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
     </div>
   );
 }

@@ -106,4 +106,20 @@ export const upsertBudget = (data) =>
 export const deleteBudget = (id) =>
   api.delete(`/budgets/${id}`).then((r) => r.data);
 
+// Recurring Transactions
+export const getRecurring = () =>
+  api.get('/recurring').then((r) => r.data);
+
+export const createRecurring = (data) =>
+  api.post('/recurring', data).then((r) => r.data);
+
+export const updateRecurring = (id, data) =>
+  api.put(`/recurring/${id}`, data).then((r) => r.data);
+
+export const deleteRecurring = (id) =>
+  api.delete(`/recurring/${id}`).then((r) => r.data);
+
+export const processRecurring = () =>
+  api.post('/recurring/process').then((r) => r.data);
+
 export default api;

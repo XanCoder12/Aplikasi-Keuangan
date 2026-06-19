@@ -10,7 +10,9 @@ import Categories from './pages/Categories';
 import Reports from './pages/Reports';
 import SavingsGoals from './pages/SavingsGoals';
 import Budgets from './pages/Budgets';
-import Insights from './pages/Insights';
+import Recurring from './pages/Recurring';
+import InsightCharts from './pages/InsightCharts';
+import InsightTables from './pages/InsightTables';
 import Docs from './pages/Docs';
 
 function ProtectedRoute({ children }) {
@@ -36,7 +38,10 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/savings" element={<ProtectedRoute><SavingsGoals /></ProtectedRoute>} />
       <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
-      <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
+      <Route path="/recurring" element={<ProtectedRoute><Recurring /></ProtectedRoute>} />
+      <Route path="/insights" element={<Navigate to="/insights/charts" replace />} />
+      <Route path="/insights/charts" element={<ProtectedRoute><InsightCharts /></ProtectedRoute>} />
+      <Route path="/insights/tables" element={<ProtectedRoute><InsightTables /></ProtectedRoute>} />
       <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
     </Routes>
   );

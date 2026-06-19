@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, BarChart3, LogOut, UserCircle, Target, Sparkles,
-  Moon, Sun, Menu, X, BookOpen,
+  Moon, Sun, Menu, X, BookOpen, Repeat, Table2, ChevronDown,
 } from 'lucide-react';
 
 const navItems = [
@@ -12,45 +12,86 @@ const navItems = [
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
   { to: '/budgets', label: 'Anggaran', icon: Wallet },
   { to: '/savings', label: 'Tabungan', icon: Target },
-  { to: '/insights', label: 'Insight', icon: Sparkles },
+  { to: '/recurring', label: 'Transaksi Berulang', icon: Repeat },
+  {
+    to: '/insights', label: 'Insight', icon: Sparkles,
+    children: [
+      { to: '/insights/charts', label: 'Chart Data', icon: BarChart3 },
+      { to: '/insights/tables', label: 'Table Data', icon: Table2 },
+    ],
+  },
   { to: '/reports', label: 'Laporan', icon: BarChart3 },
   { to: '/docs', label: 'Dokumentasi', icon: BookOpen },
 ];
 
-// Items shown in bottom nav (first 4)
-const bottomNavItems = navItems.slice(0, 4);
-// Extra items shown in hamburger menu (Insight, Laporan)
-const extraNavItems = navItems.slice(4);
+// Mobile-only bottom navigation structure.
+// Desktop uses navItems above; mobile uses a separate layout with dropdowns:
+// Dashboard | Transaksi (dropdown) | Anggaran | Insight (dropdown) | Lainnya (dropdown)
+const mobileNav = [
+  { type: 'link', to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  {
+    type: 'dropdown', key: 'transaksi', label: 'Transaksi', icon: ArrowLeftRight,
+    items: [
+      { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
+      { to: '/recurring', label: 'Transaksi Berulang', icon: Repeat },
+    ],
+  },
+  { type: 'link', to: '/budgets', label: 'Anggaran', icon: Wallet },
+  {
+    type: 'dropdown', key: 'insight', label: 'Insight', icon: Sparkles,
+    items: [
+      { to: '/insights/charts', label: 'Chart Data', icon: BarChart3 },
+      { to: '/insights/tables', label: 'Table Data', icon: Table2 },
+    ],
+  },
+  {
+    type: 'dropdown', key: 'lainnya', label: 'Lainnya', icon: Menu,
+    items: [
+      { to: '/savings', label: 'Tabungan', icon: Target },
+      { to: '/reports', label: 'Laporan', icon: BarChart3 },
+      { to: '/docs', label: 'Dokumentasi', icon: BookOpen },
+    ],
+  },
+];
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+  const [openMenu, setOpenMenu] = useState(null); // 'transaksi' | 'insight' | 'lainnya' | null
+  const [openSections, setOpenSections] = useState({});
+  const bottomNavRef = useRef(null);
+
+  const isSectionOpen = (to) => {
+    const active = location.pathname.startsWith(to);
+    return openSections[to] ?? active;
+  };
+  const toggleSection = (to) => setOpenSections((s) => ({ ...s, [to]: !isSectionOpen(to) }));
 
   const pageTitles = {
     '/': 'Dashboard',
     '/transactions': 'Transaksi',
     '/categories': 'Kategori',
     '/savings': 'Tabungan',
-    '/insights': 'Insight',
+    '/recurring': 'Transaksi Berulang',
+    '/insights/charts': 'Chart Data',
+    '/insights/tables': 'Table Data',
     '/reports': 'Laporan',
     '/docs': 'Dokumentasi',
   };
 
   const currentTitle = pageTitles[location.pathname] || 'Catatan Keuangan';
 
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useEffect(() => { setOpenMenu(null); }, [location.pathname]);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!openMenu) return;
     const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+      if (bottomNavRef.current && !bottomNavRef.current.contains(e.target)) setOpenMenu(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
+  }, [openMenu]);
 
   const SidebarContent = ({ onItemClick }) => (
     <>
@@ -66,34 +107,89 @@ export default function Layout({ children }) {
         </div>
       </div>
       <nav className="flex-1 px-3 space-y-0.5">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            onClick={onItemClick}
-            className={({ isActive }) =>
-              `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold dark:bg-blue-900/40 dark:text-blue-400'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+        {navItems.map((item) => {
+          if (item.children) {
+            const isParentActive = location.pathname.startsWith(item.to);
+            const open = isSectionOpen(item.to);
+            return (
+              <div key={item.to}>
+                <button
+                  onClick={() => toggleSection(item.to)}
+                  className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                    isParentActive
+                      ? 'bg-blue-50 text-blue-700 font-semibold dark:bg-blue-900/40 dark:text-blue-400'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {isParentActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+                  )}
+                  <item.icon size={19} strokeWidth={isParentActive ? 2.2 : 1.8} />
+                  <span>{item.label}</span>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    {!isParentActive && (
+                      <span className="text-[9px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white px-1.5 py-0.5 rounded-full">NEW</span>
+                    )}
+                    <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                {open && (
+                  <div className="mt-0.5 ml-3 pl-3 border-l border-gray-100 dark:border-gray-700 space-y-0.5">
+                    {item.children.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        onClick={onItemClick}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-700 font-semibold dark:bg-blue-900/40 dark:text-blue-400'
+                              : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <child.icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
+                            <span>{child.label}</span>
+                          </>
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
                 )}
-                <item.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
-                <span>{item.label}</span>
-                {item.to === '/insights' && !isActive && (
-                  <span className="ml-auto text-[9px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white px-1.5 py-0.5 rounded-full">NEW</span>
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+              </div>
+            );
+          }
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              onClick={onItemClick}
+              className={({ isActive }) =>
+                `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-semibold dark:bg-blue-900/40 dark:text-blue-400'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+                  )}
+                  <item.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
+                  <span>{item.label}</span>
+                  {item.to === '/recurring' && !isActive && (
+                    <span className="ml-auto text-[9px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white px-1.5 py-0.5 rounded-full">NEW</span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
       <div className="px-3 pb-2">
         <button
@@ -121,9 +217,7 @@ export default function Layout({ children }) {
     </>
   );
 
-  const isExtraActive = extraNavItems.some(i =>
-    i.to === '/' ? location.pathname === '/' : location.pathname.startsWith(i.to)
-  );
+  const isPathActive = (to) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to));
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors overflow-x-hidden">
@@ -150,68 +244,78 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 safe-area-pb transition-colors">
+      <nav ref={bottomNavRef} className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 safe-area-pb transition-colors">
         <div className="grid grid-cols-5 h-16 relative">
-          {bottomNavItems.map((item) => {
-            const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
+          {mobileNav.map((entry, idx) => {
+            if (entry.type === 'link') {
+              const isActive = isPathActive(entry.to);
+              return (
+                <NavLink
+                  key={entry.to}
+                  to={entry.to}
+                  end={entry.end}
+                  className={`relative flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                    isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                  }`}
+                >
+                  <div className={`p-1 rounded-lg transition-all ${isActive ? 'scale-110' : ''}`}>
+                    <entry.icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                  </div>
+                  <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>{entry.label}</span>
+                  {isActive && <div className="absolute top-0 w-8 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
+                </NavLink>
+              );
+            }
+            // dropdown tab
+            const isActive = entry.items.some((i) => isPathActive(i.to));
+            const isOpen = openMenu === entry.key;
+            const alignRight = idx >= 2;
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                  isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
-                }`}
-              >
-                <div className={`p-1 rounded-lg transition-all ${isActive ? 'scale-110' : ''}`}>
-                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
-                </div>
-                <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
-                {isActive && <div className="absolute top-0 w-8 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
-              </NavLink>
+              <div key={entry.key} className="relative">
+                <button
+                  onClick={() => setOpenMenu(isOpen ? null : entry.key)}
+                  className={`relative w-full h-full flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                    isActive || isOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                  }`}
+                >
+                  <div className={`p-1 rounded-lg transition-all ${isOpen ? 'scale-110' : ''}`}>
+                    {isOpen ? <X size={22} strokeWidth={2} /> : <entry.icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />}
+                  </div>
+                  <span className={`text-[10px] ${isActive || isOpen ? 'font-semibold' : 'font-medium'}`}>{entry.label}</span>
+                  {(isActive || isOpen) && <div className="absolute top-0 w-8 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
+                </button>
+
+                {isOpen && (
+                  <div className={`absolute bottom-full mb-2 w-48 bg-white dark:bg-gray-700 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden ${alignRight ? 'right-0' : 'left-0'}`}>
+                    <div className="p-1.5">
+                      <div className="px-3.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        {entry.label}
+                      </div>
+                      {entry.items.map((child) => {
+                        const childActive = isPathActive(child.to);
+                        return (
+                          <NavLink
+                            key={child.to}
+                            to={child.to}
+                            end={child.to === '/'}
+                            onClick={() => setOpenMenu(null)}
+                            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                              childActive
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            <child.icon size={18} strokeWidth={childActive ? 2.2 : 1.8} />
+                            <span>{child.label}</span>
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
-
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className={`w-full h-full flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                isExtraActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
-              }`}
-            >
-              <div className={`p-1 rounded-lg transition-all ${menuOpen ? 'scale-110' : ''}`}>
-                {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={1.8} />}
-              </div>
-              <span className={`text-[10px] ${isExtraActive ? 'font-semibold' : 'font-medium'}`}>Lainnya</span>
-              {isExtraActive && !menuOpen && <div className="absolute top-0 w-8 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />}
-            </button>
-
-            {menuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-700 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden">
-                <div className="p-1.5">
-                  {extraNavItems.map((item) => {
-                    const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to);
-                    return (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.to === '/'}
-                        onClick={() => setMenuOpen(false)}
-                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        <item.icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
-                        <span>{item.label}</span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </nav>
 

@@ -7,6 +7,7 @@ import (
 	"github.com/akrom/finance-backend/internal/database"
 	"github.com/akrom/finance-backend/internal/handler"
 	"github.com/akrom/finance-backend/internal/middleware"
+	"github.com/akrom/finance-backend/internal/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -22,6 +23,13 @@ func main() {
 
 	if err := database.Migrate(); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	// Auto-process any due recurring transactions on startup
+	if n, err := service.ProcessDueRecurring(0); err != nil {
+		log.Printf("Warning: recurring processing failed: %v", err)
+	} else if n > 0 {
+		log.Printf("Processed %d due recurring transactions on startup", n)
 	}
 
 	r := gin.Default()
@@ -77,6 +85,14 @@ func main() {
 			protected.GET("/budgets/summary", handler.GetBudgetSummary)
 			protected.POST("/budgets", handler.UpsertBudget)
 			protected.DELETE("/budgets/:id", handler.DeleteBudget)
+
+			// Recurring transactions
+			protected.GET("/recurring", handler.GetRecurring)
+			protected.GET("/recurring/:id", handler.GetRecurringByID)
+			protected.POST("/recurring", handler.CreateRecurring)
+			protected.PUT("/recurring/:id", handler.UpdateRecurring)
+			protected.DELETE("/recurring/:id", handler.DeleteRecurring)
+			protected.POST("/recurring/process", handler.ProcessRecurringNow)
 		}
 	}
 

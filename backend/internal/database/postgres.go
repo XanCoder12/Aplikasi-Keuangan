@@ -159,6 +159,31 @@ func Migrate() error {
 		CREATE INDEX IF NOT EXISTS idx_budgets_month_year ON budgets(month, year);
 	`)
 
+	// Step 7: Create recurring_transactions table
+	_, err = Pool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS recurring_transactions (
+			id SERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+			amount BIGINT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
+			frequency VARCHAR(10) NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'yearly')),
+			start_date DATE NOT NULL,
+			end_date DATE,
+			next_date DATE NOT NULL,
+			last_processed DATE,
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMP DEFAULT NOW(),
+			updated_at TIMESTAMP DEFAULT NOW()
+		);
+		CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id);
+		CREATE INDEX IF NOT EXISTS idx_recurring_due ON recurring_transactions(next_date) WHERE is_active = TRUE;
+	`)
+	if err != nil {
+		return fmt.Errorf("migrate recurring_transactions: %w", err)
+	}
+
 	return nil
 }
 
