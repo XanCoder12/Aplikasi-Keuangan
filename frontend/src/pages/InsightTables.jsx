@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Table2, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CalendarDays, ListChecks } from 'lucide-react';
+import { Table2, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, CalendarDays, ListChecks, Download } from 'lucide-react';
 import { getSummary, getCategoryTrend, getTransactions } from '../api/client';
 import { formatRupiah, formatCompact, MONTH_FULL } from '../utils/format';
 
@@ -50,6 +50,33 @@ export default function InsightTables() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [month, year]);
+
+  const handleExportExcel = () => {
+    if (transactions.length === 0) {
+      alert('Tidak ada data transaksi untuk diekspor.');
+      return;
+    }
+    
+    // Build CSV content which is Excel compatible (using UTF-8 BOM)
+    const headers = ['Tanggal', 'Kategori', 'Keterangan', 'Tipe', 'Jumlah (Rp)'];
+    const rows = transactions.map(t => [
+      t.date,
+      t.category_name || '',
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+      t.amount
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Daftar_Transaksi_${month}_${year}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Category split (same logic as the charts page)
   const incomeCats = summary?.by_category?.filter(c => c.total > 0 && !c.category_name.includes('Pengeluaran') && !c.category_name.includes('Lainnya (Peng'))
@@ -262,7 +289,17 @@ export default function InsightTables() {
             <ListChecks size={18} className="text-gray-400" />
             Daftar Transaksi - {MONTH_FULL[month - 1]} {year}
           </h2>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{transactions.length} transaksi</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1.5 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              title="Ekspor ke Excel/CSV"
+            >
+              <Download size={14} />
+              <span>Ekspor Excel</span>
+            </button>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{transactions.length} transaksi</span>
+          </div>
         </div>
         {transactions.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-gray-400 dark:text-gray-500 text-sm">
